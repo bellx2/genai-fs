@@ -1,6 +1,6 @@
-# GenAI FileStore
+# Gemini FileStore Manager
 
-A terminal-based UI tool for managing Google GenAI FileStore API. Built with React Ink and Bun.
+A terminal-based UI tool for managing Google Gemini FileStore.
 
 ## Quick Start
 
