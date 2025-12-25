@@ -26,6 +26,10 @@ export interface FileSearchStore {
   displayName: string;
   createTime?: string;
   updateTime?: string;
+  activeDocumentsCount?: string; // アクティブなドキュメント数
+  pendingDocumentsCount?: string; // 処理中のドキュメント数
+  failedDocumentsCount?: string; // 失敗したドキュメント数
+  sizeBytes?: string; // ストア全体のサイズ
 }
 
 // ドキュメントの状態
