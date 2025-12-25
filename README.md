@@ -1,6 +1,16 @@
-# Gemini FileStore Manager
+# GenAI FileStore
 
-A terminal-based UI tool for managing Google Gemini FileStore API. Built with React Ink and Bun.
+A terminal-based UI tool for managing Google GenAI FileStore API. Built with React Ink and Bun.
+
+## Quick Start
+
+```bash
+# Using npx
+GEMINI_API_KEY=your_api_key npx genai-fs
+
+# Using bunx
+GEMINI_API_KEY=your_api_key bunx genai-fs
+```
 
 ## Features
 
@@ -11,13 +21,29 @@ A terminal-based UI tool for managing Google Gemini FileStore API. Built with Re
 
 ## Requirements
 
-- [Bun](https://bun.sh) runtime
+- [Bun](https://bun.sh) or Node.js runtime
 - Google Gemini API key
 
 ## Installation
 
+### Global Install
+
 ```bash
-bun install
+# npm
+npm install -g genai-fs
+
+# bun
+bun add -g genai-fs
+```
+
+### Run without install
+
+```bash
+# npx
+npx genai-fs
+
+# bunx
+bunx genai-fs
 ```
 
 ## Setup
@@ -28,16 +54,10 @@ Set your Gemini API key as an environment variable:
 export GEMINI_API_KEY=your_api_key_here
 ```
 
-## Usage
+Then run (after global install):
 
 ```bash
-bun run dev
-```
-
-Or run directly:
-
-```bash
-bun run src/index.tsx
+genai-fs
 ```
 
 ## Keyboard Shortcuts
@@ -77,7 +97,7 @@ bun run src/index.tsx
 
 ## API Reference
 
-This tool uses the [Gemini FileSearch API](https://ai.google.dev/api/file-search/file-search-stores).
+This tool uses the [GenAI FileSearch API](https://ai.google.dev/api/file-search/file-search-stores).
 
 ## License
 
