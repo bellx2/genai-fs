@@ -22,6 +22,7 @@ import { maskApiKey } from "./utils/formatters.ts";
 
 // 画面の種類
 type Screen =
+  | "api-key-input"
   | "store-select"
   | "store-detail"
   | "document-list"
@@ -37,14 +38,22 @@ type Screen =
 
 export function App() {
   const { exit } = useApp();
-  const [screen, setScreen] = useState<Screen>("store-select");
+
+  // APIキーの状態（環境変数から初期化）
+  const [apiKey, setApiKey] = useState<string>(process.env.GEMINI_API_KEY || "");
+  const [apiKeyInput, setApiKeyInput] = useState("");
+
+  // 初期画面を決定
+  const [screen, setScreen] = useState<Screen>(
+    process.env.GEMINI_API_KEY ? "store-select" : "api-key-input"
+  );
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [selectedStore, setSelectedStore] = useState<FileSearchStore | null>(null);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
 
   // ストア一覧の状態
   const [stores, setStores] = useState<FileSearchStore[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!!process.env.GEMINI_API_KEY);
   const [error, setError] = useState<string | null>(null);
 
   // ドキュメント一覧の状態
@@ -84,21 +93,33 @@ export function App() {
   }, [selectedStore]);
 
   // ストア一覧を取得
+  const fetchStores = useCallback(async () => {
+    if (!apiKey) return;
+    try {
+      setLoading(true);
+      setError(null);
+      const result = await listStores();
+      setStores(result);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setLoading(false);
+    }
+  }, [apiKey]);
+
   useEffect(() => {
-    const fetchStores = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const result = await listStores();
-        setStores(result);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Unknown error");
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchStores();
-  }, []);
+  }, [fetchStores]);
+
+  // APIキー設定後にストア一覧を取得
+  const handleApiKeySubmit = () => {
+    if (!apiKeyInput.trim()) return;
+    process.env.GEMINI_API_KEY = apiKeyInput.trim();
+    setApiKey(apiKeyInput.trim());
+    setApiKeyInput("");
+    setScreen("store-select");
+    setLoading(true);
+  };
 
   // ストア選択時にドキュメント一覧を取得
   useEffect(() => {
@@ -254,12 +275,23 @@ export function App() {
 
   useInput((input, key) => {
     // qキーは共通で終了（入力画面以外）
-    if (input === "q" && !["store-create", "confirm-store-delete"].includes(screen)) {
+    if (input === "q" && !["api-key-input", "store-create", "confirm-store-delete"].includes(screen)) {
       exit();
       return;
     }
 
     switch (screen) {
+      // APIキー入力画面
+      case "api-key-input":
+        handleTextInput(
+          input,
+          key,
+          setApiKeyInput,
+          handleApiKeySubmit,
+          exit
+        );
+        return;
+
       // 入力を無視する画面
       case "file-browser":
       case "uploading":
@@ -372,6 +404,27 @@ export function App() {
           </>
         )}
       </Box>
+
+      {screen === "api-key-input" && (
+        <Box flexDirection="column">
+          <Box marginBottom={1}>
+            <Text color="yellow" bold>
+              GEMINI_API_KEY is not set
+            </Text>
+          </Box>
+          <Text>Enter your Gemini API key:</Text>
+          <Box marginTop={1}>
+            <Text dimColor>{">"} </Text>
+            <Text color={apiKeyInput.trim() ? "green" : "white"}>
+              {apiKeyInput ? "*".repeat(apiKeyInput.length) : ""}
+            </Text>
+            <Text color="gray">|</Text>
+          </Box>
+          <Box marginTop={1}>
+            <Text dimColor>Enter: Submit  Esc: Quit</Text>
+          </Box>
+        </Box>
+      )}
 
       {screen === "store-select" && (
         <StoreList
