@@ -238,170 +238,112 @@ export function App() {
     }
   };
 
-  const currentItems =
-    screen === "store-select" ? stores : screen === "document-list" ? documents : [];
+  // テキスト入力処理
+  const handleTextInput = (
+    input: string,
+    key: { escape: boolean; backspace: boolean; delete: boolean; return: boolean; ctrl: boolean; meta: boolean },
+    setInput: (fn: (prev: string) => string) => void,
+    onSubmit: () => void,
+    onCancel: () => void
+  ) => {
+    if (key.escape) { onCancel(); return; }
+    if (key.backspace || key.delete) { setInput((prev) => prev.slice(0, -1)); return; }
+    if (key.return) { onSubmit(); return; }
+    if (input && !key.ctrl && !key.meta) setInput((prev) => prev + input);
+  };
 
   useInput((input, key) => {
-    // ファイルブラウザとアップロード中は専用の入力処理
-    if (screen === "file-browser" || screen === "uploading") return;
-
-    if (loading) return;
-
-    // ストア作成画面
-    if (screen === "store-create") {
-      if (key.escape) {
-        setScreen("store-select");
-        setStoreCreateInput("");
-        return;
-      }
-      if (key.backspace || key.delete) {
-        setStoreCreateInput((prev) => prev.slice(0, -1));
-        return;
-      }
-      if (key.return) {
-        if (storeCreateInput.trim()) {
-          handleCreateStore();
-        }
-        return;
-      }
-      // 通常の文字入力
-      if (input && !key.ctrl && !key.meta) {
-        setStoreCreateInput((prev) => prev + input);
-      }
+    // qキーは共通で終了（入力画面以外）
+    if (input === "q" && !["store-create", "confirm-store-delete"].includes(screen)) {
+      exit();
       return;
     }
 
-    // ストア作成中は入力を無視
-    if (screen === "store-creating") return;
-
-    // ストア削除確認画面
-    if (screen === "confirm-store-delete") {
-      const store = stores[selectedIndex];
-      if (key.escape) {
-        setScreen("store-select");
-        setStoreDeleteInput("");
+    switch (screen) {
+      // 入力を無視する画面
+      case "file-browser":
+      case "uploading":
+      case "store-creating":
+      case "store-deleting":
+      case "deleting":
         return;
-      }
-      if (key.backspace || key.delete) {
-        setStoreDeleteInput((prev) => prev.slice(0, -1));
+
+      // ストア作成画面
+      case "store-create":
+        handleTextInput(
+          input,
+          key,
+          setStoreCreateInput,
+          () => { if (storeCreateInput.trim()) handleCreateStore(); },
+          () => { setScreen("store-select"); setStoreCreateInput(""); }
+        );
         return;
-      }
-      if (key.return) {
-        if (store && storeDeleteInput === store.displayName) {
-          handleDeleteStore();
-        }
-        return;
-      }
-      // 通常の文字入力
-      if (input && !key.ctrl && !key.meta) {
-        setStoreDeleteInput((prev) => prev + input);
-      }
-      return;
-    }
 
-    // ストア削除中は入力を無視
-    if (screen === "store-deleting") return;
-
-    // 削除確認画面
-    if (screen === "confirm-delete") {
-      if (input === "y" || input === "Y") {
-        handleDeleteDocument();
-      }
-      if (input === "n" || input === "N" || key.escape) {
-        setScreen("document-detail");
-      }
-      return;
-    }
-
-    // 削除中は入力を無視
-    if (screen === "deleting") return;
-
-    // ストア詳細画面ではEsc/bで戻る
-    if (screen === "store-detail") {
-      if (key.escape || input === "b") {
-        setScreen("store-select");
-      }
-      if (input === "q") {
-        exit();
-      }
-      return;
-    }
-
-    // ドキュメント詳細画面ではEsc/bで戻る、dで削除
-    if (screen === "document-detail") {
-      if (key.escape || input === "b") {
-        setScreen("document-list");
-        setSelectedDocument(null);
-      }
-      if (input === "d") {
-        setScreen("confirm-delete");
-      }
-      if (input === "q") {
-        exit();
-      }
-      return;
-    }
-
-    if (key.upArrow) {
-      setSelectedIndex((prev) => (prev > 0 ? prev - 1 : currentItems.length - 1));
-    }
-    if (key.downArrow) {
-      setSelectedIndex((prev) => (prev < currentItems.length - 1 ? prev + 1 : 0));
-    }
-    if (key.return) {
-      if (screen === "store-select") {
+      // ストア削除確認画面
+      case "confirm-store-delete": {
         const store = stores[selectedIndex];
-        if (store) {
-          setSelectedStore(store);
+        handleTextInput(
+          input,
+          key,
+          setStoreDeleteInput,
+          () => { if (store && storeDeleteInput === store.displayName) handleDeleteStore(); },
+          () => { setScreen("store-select"); setStoreDeleteInput(""); }
+        );
+        return;
+      }
+
+      // ドキュメント削除確認画面
+      case "confirm-delete":
+        if (input === "y" || input === "Y") handleDeleteDocument();
+        if (input === "n" || input === "N" || key.escape) setScreen("document-detail");
+        return;
+
+      // ストア詳細画面
+      case "store-detail":
+        if (key.escape || input === "b") setScreen("store-select");
+        return;
+
+      // ドキュメント詳細画面
+      case "document-detail":
+        if (key.escape || input === "b") {
+          setScreen("document-list");
+          setSelectedDocument(null);
+        }
+        if (input === "d") setScreen("confirm-delete");
+        return;
+
+      // ストア一覧画面
+      case "store-select":
+        if (loading) return;
+        if (key.upArrow) setSelectedIndex((prev) => (prev > 0 ? prev - 1 : stores.length - 1));
+        if (key.downArrow) setSelectedIndex((prev) => (prev < stores.length - 1 ? prev + 1 : 0));
+        if (key.return && stores[selectedIndex]) {
+          setSelectedStore(stores[selectedIndex]);
           setScreen("document-list");
           setSelectedIndex(0);
         }
-      }
-      // Enterキーでドキュメント詳細へ
-      if (screen === "document-list" && documents.length > 0) {
-        const doc = documents[selectedIndex];
-        if (doc) {
-          setSelectedDocument(doc);
+        if (input === "i" && stores.length > 0) setScreen("store-detail");
+        if (input === "n") { setScreen("store-create"); setStoreCreateInput(""); }
+        if (input === "d" && stores.length > 0) { setScreen("confirm-store-delete"); setStoreDeleteInput(""); }
+        return;
+
+      // ドキュメント一覧画面
+      case "document-list":
+        if (loading) return;
+        if (key.upArrow) setSelectedIndex((prev) => (prev > 0 ? prev - 1 : documents.length - 1));
+        if (key.downArrow) setSelectedIndex((prev) => (prev < documents.length - 1 ? prev + 1 : 0));
+        if ((key.return || input === "i") && documents[selectedIndex]) {
+          setSelectedDocument(documents[selectedIndex]);
           setScreen("document-detail");
         }
-      }
-    }
-    // i キーで詳細画面へ
-    if (input === "i" && screen === "document-list" && documents.length > 0) {
-      const doc = documents[selectedIndex];
-      if (doc) {
-        setSelectedDocument(doc);
-        setScreen("document-detail");
-      }
-    }
-    // u キーでアップロード画面へ
-    if (input === "u" && screen === "document-list") {
-      setScreen("file-browser");
-    }
-    // i キーでストア詳細画面へ
-    if (input === "i" && screen === "store-select" && stores.length > 0) {
-      setScreen("store-detail");
-    }
-    // d キーでストア削除確認画面へ
-    if (input === "d" && screen === "store-select" && stores.length > 0) {
-      setScreen("confirm-store-delete");
-      setStoreDeleteInput("");
-    }
-    // n キーでストア作成画面へ
-    if (input === "n" && screen === "store-select") {
-      setScreen("store-create");
-      setStoreCreateInput("");
-    }
-    if (input === "q") {
-      exit();
-    }
-    if (key.escape) {
-      if (screen === "document-list") {
-        setScreen("store-select");
-        setSelectedStore(null);
-        setDocuments([]);
-        setSelectedIndex(0);
-      }
+        if (input === "u") setScreen("file-browser");
+        if (key.escape) {
+          setScreen("store-select");
+          setSelectedStore(null);
+          setDocuments([]);
+          setSelectedIndex(0);
+        }
+        return;
     }
   });
 

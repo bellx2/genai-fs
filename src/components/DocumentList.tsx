@@ -25,7 +25,14 @@ export function DocumentList({
   }
 
   if (documents.length === 0) {
-    return <Text color="gray">No documents found</Text>;
+    return (
+      <Box flexDirection="column">
+        <Text color="gray">No documents found</Text>
+        <Box marginTop={1}>
+          <Text dimColor>u: Upload  Esc: Back  q: Quit</Text>
+        </Box>
+      </Box>
+    );
   }
 
   return (

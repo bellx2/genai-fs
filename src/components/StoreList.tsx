@@ -25,7 +25,14 @@ export function StoreList({
   }
 
   if (stores.length === 0) {
-    return <Text color="gray">No stores found</Text>;
+    return (
+      <Box flexDirection="column">
+        <Text color="gray">No stores found</Text>
+        <Box marginTop={1}>
+          <Text dimColor>n: New  q: Quit</Text>
+        </Box>
+      </Box>
+    );
   }
 
   return (
