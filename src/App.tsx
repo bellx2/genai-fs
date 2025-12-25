@@ -11,7 +11,14 @@ import {
   type Document,
 } from "./lib/api.ts";
 import { FileBrowser } from "./components/FileBrowser.tsx";
-import { Spinner } from "./components/Spinner.tsx";
+import { StatusScreen } from "./components/StatusScreen.tsx";
+import { StoreList } from "./components/StoreList.tsx";
+import { StoreDetail } from "./components/StoreDetail.tsx";
+import { StoreForm } from "./components/StoreForm.tsx";
+import { DocumentList } from "./components/DocumentList.tsx";
+import { DocumentDetail } from "./components/DocumentDetail.tsx";
+import { DocumentDeleteConfirm } from "./components/DocumentDeleteConfirm.tsx";
+import { maskApiKey } from "./utils/formatters.ts";
 
 // 画面の種類
 type Screen =
@@ -27,47 +34,6 @@ type Screen =
   | "store-deleting"
   | "store-create"
   | "store-creating";
-
-// ファイルサイズをフォーマット
-function formatBytes(bytes: string | undefined): string {
-  if (!bytes) return "-";
-  const size = parseInt(bytes, 10);
-  if (size < 1024) return `${size} B`;
-  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-// 日時をフォーマット
-function formatDate(dateStr: string | undefined): string {
-  if (!dateStr) return "-";
-  const date = new Date(dateStr);
-  return date.toLocaleString("ja-JP");
-}
-
-// Mask API key for display
-function maskApiKey(): string {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return "Not set";
-  if (apiKey.length <= 8) return "****";
-  return `${apiKey.slice(0, 4)}...${apiKey.slice(-4)}`;
-}
-
-// Format state display
-function formatState(state: string | undefined): { text: string; color: string } {
-  switch (state) {
-    case "ACTIVE":
-    case "STATE_ACTIVE":
-      return { text: "Active", color: "green" };
-    case "PENDING":
-    case "STATE_PENDING":
-      return { text: "Pending", color: "yellow" };
-    case "FAILED":
-    case "STATE_FAILED":
-      return { text: "Failed", color: "red" };
-    default:
-      return { text: state ?? "-", color: "gray" };
-  }
-}
 
 export function App() {
   const { exit } = useApp();
@@ -391,6 +357,14 @@ export function App() {
           setSelectedIndex(0);
         }
       }
+      // Enterキーでドキュメント詳細へ
+      if (screen === "document-list" && documents.length > 0) {
+        const doc = documents[selectedIndex];
+        if (doc) {
+          setSelectedDocument(doc);
+          setScreen("document-detail");
+        }
+      }
     }
     // i キーで詳細画面へ
     if (input === "i" && screen === "document-list" && documents.length > 0) {
@@ -458,323 +432,57 @@ export function App() {
       </Box>
 
       {screen === "store-select" && (
-        <>
-
-          {loading && <Text color="gray">Loading...</Text>}
-          {error && <Text color="red">Error: {error}</Text>}
-          {!loading && !error && stores.length === 0 && (
-            <Text color="gray">No stores found</Text>
-          )}
-
-          {!loading && !error && stores.length > 0 && (
-            <Box flexDirection="column">
-              <Box gap={1} marginBottom={1}>
-                <Box width={24}>
-                  <Text bold dimColor>Name</Text>
-                </Box>
-                <Box width={22}>
-                  <Text bold dimColor>Created</Text>
-                </Box>
-                <Box width={22}>
-                  <Text bold dimColor>Updated</Text>
-                </Box>
-              </Box>
-              {stores.map((store, index) => (
-                <Box key={store.name} gap={1}>
-                  <Box width={24}>
-                    <Text color={index === selectedIndex ? "green" : "white"}>
-                      {index === selectedIndex ? "❯ " : "  "}
-                      {store.displayName.slice(0, 20)}
-                    </Text>
-                  </Box>
-                  <Box width={22}>
-                    <Text dimColor>{formatDate(store.createTime)}</Text>
-                  </Box>
-                  <Box width={22}>
-                    <Text dimColor>{formatDate(store.updateTime)}</Text>
-                  </Box>
-                </Box>
-              ))}
-            </Box>
-          )}
-
-          <Box marginTop={1}>
-            <Text dimColor>Up/Down: Select  Enter: Confirm  i: Info  n: New  d: Delete  q: Quit</Text>
-          </Box>
-        </>
+        <StoreList
+          stores={stores}
+          selectedIndex={selectedIndex}
+          loading={loading}
+          error={error}
+        />
       )}
 
       {screen === "store-detail" && stores[selectedIndex] && (
-        <>
-          <Box flexDirection="column" gap={0}>
-            <Box>
-              <Box width={14}>
-                <Text bold dimColor>Name</Text>
-              </Box>
-              <Text>{stores[selectedIndex].displayName}</Text>
-            </Box>
-            <Box>
-              <Box width={14}>
-                <Text bold dimColor>ID</Text>
-              </Box>
-              <Text>{stores[selectedIndex].name.split("/").pop()}</Text>
-            </Box>
-            <Box>
-              <Box width={14}>
-                <Text bold dimColor>Full Name</Text>
-              </Box>
-              <Text>{stores[selectedIndex].name}</Text>
-            </Box>
-            <Box>
-              <Box width={14}>
-                <Text bold dimColor>Created</Text>
-              </Box>
-              <Text>{formatDate(stores[selectedIndex].createTime)}</Text>
-            </Box>
-            <Box>
-              <Box width={14}>
-                <Text bold dimColor>Updated</Text>
-              </Box>
-              <Text>{formatDate(stores[selectedIndex].updateTime)}</Text>
-            </Box>
-          </Box>
-
-          <Box marginTop={1}>
-            <Text dimColor>Esc/b: Back  q: Quit</Text>
-          </Box>
-        </>
+        <StoreDetail store={stores[selectedIndex]} />
       )}
 
       {screen === "store-create" && (
-        <Box flexDirection="column">
-          <Box marginBottom={1}>
-            <Text color="green" bold>
-              Create new store
-            </Text>
-          </Box>
-          <Text>Enter the store name:</Text>
-          <Box marginTop={1}>
-            <Text dimColor>{">"} </Text>
-            <Text color={storeCreateInput.trim() ? "green" : "white"}>
-              {storeCreateInput}
-            </Text>
-            <Text color="gray">|</Text>
-          </Box>
-          <Box marginTop={1}>
-            <Text dimColor>Enter: Create  Esc: Cancel</Text>
-          </Box>
-        </Box>
+        <StoreForm mode="create" input={storeCreateInput} />
       )}
 
       {screen === "store-creating" && (
-        <Box flexDirection="column">
-          {isStoreCreating ? (
-            <Spinner message={storeCreateStatus} />
-          ) : (
-            <Text color={storeCreateStatus.startsWith("Error") ? "red" : "green"}>
-              {storeCreateStatus}
-            </Text>
-          )}
-        </Box>
+        <StatusScreen isProcessing={isStoreCreating} message={storeCreateStatus} />
       )}
 
       {screen === "confirm-store-delete" && stores[selectedIndex] && (
-        <Box flexDirection="column">
-          <Box marginBottom={1}>
-            <Text color="red" bold>
-              Delete this store?
-            </Text>
-          </Box>
-          <Text>
-            To delete "{stores[selectedIndex].displayName}", type the store name to confirm:
-          </Text>
-          <Box marginTop={1}>
-            <Text dimColor>{">"} </Text>
-            <Text color={storeDeleteInput === stores[selectedIndex].displayName ? "green" : "white"}>
-              {storeDeleteInput}
-            </Text>
-            <Text color="gray">|</Text>
-          </Box>
-          <Box marginTop={1}>
-            <Text dimColor>Enter: Confirm  Esc: Cancel</Text>
-          </Box>
-        </Box>
+        <StoreForm
+          mode="delete"
+          input={storeDeleteInput}
+          storeName={stores[selectedIndex].displayName}
+        />
       )}
 
       {screen === "store-deleting" && (
-        <Box flexDirection="column">
-          {isStoreDeleting ? (
-            <Spinner message={storeDeleteStatus} />
-          ) : (
-            <Text color={storeDeleteStatus.startsWith("Error") ? "red" : "green"}>
-              {storeDeleteStatus}
-            </Text>
-          )}
-        </Box>
+        <StatusScreen isProcessing={isStoreDeleting} message={storeDeleteStatus} />
       )}
 
       {screen === "document-list" && (
-        <>
-          {loading && <Text color="gray">Loading...</Text>}
-          {error && <Text color="red">Error: {error}</Text>}
-          {!loading && !error && documents.length === 0 && (
-            <Text color="gray">No documents found</Text>
-          )}
-
-          {!loading && !error && documents.length > 0 && (
-            <Box flexDirection="column">
-              <Box gap={1} marginBottom={1}>
-                <Box width={28}>
-                  <Text bold dimColor>Name</Text>
-                </Box>
-                <Box width={10}>
-                  <Text bold dimColor>State</Text>
-                </Box>
-                <Box width={12}>
-                  <Text bold dimColor>Size</Text>
-                </Box>
-                <Box width={22}>
-                  <Text bold dimColor>Created</Text>
-                </Box>
-                <Box width={22}>
-                  <Text bold dimColor>Updated</Text>
-                </Box>
-              </Box>
-              {documents.map((doc, index) => {
-                const state = formatState(doc.state);
-                const name = doc.displayName || doc.name.split("/").pop() || "";
-                return (
-                  <Box key={doc.name} gap={1}>
-                    <Box width={28}>
-                      <Text color={index === selectedIndex ? "green" : "white"}>
-                        {index === selectedIndex ? "❯ " : "  "}
-                        {name.slice(0, 24)}
-                      </Text>
-                    </Box>
-                    <Box width={10}>
-                      <Text color={state.color}>{state.text}</Text>
-                    </Box>
-                    <Box width={12}>
-                      <Text dimColor>{formatBytes(doc.sizeBytes)}</Text>
-                    </Box>
-                    <Box width={22}>
-                      <Text dimColor>{formatDate(doc.createTime)}</Text>
-                    </Box>
-                    <Box width={22}>
-                      <Text dimColor>{formatDate(doc.updateTime)}</Text>
-                    </Box>
-                  </Box>
-                );
-              })}
-            </Box>
-          )}
-
-          <Box marginTop={1}>
-            <Text dimColor>Up/Down: Select  i: Info  u: Upload  Esc: Back  q: Quit</Text>
-          </Box>
-        </>
+        <DocumentList
+          documents={documents}
+          selectedIndex={selectedIndex}
+          loading={loading}
+          error={error}
+        />
       )}
 
       {screen === "document-detail" && selectedDocument && (
-        <>
-          <Box flexDirection="column" gap={0}>
-            <Box>
-              <Box width={14}>
-                <Text bold dimColor>Name</Text>
-              </Box>
-              <Text>{selectedDocument.displayName || "-"}</Text>
-            </Box>
-            <Box>
-              <Box width={14}>
-                <Text bold dimColor>ID</Text>
-              </Box>
-              <Text>{selectedDocument.name.split("/").pop()}</Text>
-            </Box>
-            <Box>
-              <Box width={14}>
-                <Text bold dimColor>MIME Type</Text>
-              </Box>
-              <Text>{selectedDocument.mimeType || "-"}</Text>
-            </Box>
-            <Box>
-              <Box width={14}>
-                <Text bold dimColor>Size</Text>
-              </Box>
-              <Text>{formatBytes(selectedDocument.sizeBytes)}</Text>
-            </Box>
-            <Box>
-              <Box width={14}>
-                <Text bold dimColor>State</Text>
-              </Box>
-              <Text color={formatState(selectedDocument.state).color}>
-                {formatState(selectedDocument.state).text}
-              </Text>
-            </Box>
-            <Box>
-              <Box width={14}>
-                <Text bold dimColor>Created</Text>
-              </Box>
-              <Text>{formatDate(selectedDocument.createTime)}</Text>
-            </Box>
-            <Box>
-              <Box width={14}>
-                <Text bold dimColor>Updated</Text>
-              </Box>
-              <Text>{formatDate(selectedDocument.updateTime)}</Text>
-            </Box>
-
-            {selectedDocument.customMetadata &&
-              selectedDocument.customMetadata.length > 0 && (
-                <>
-                  <Box marginTop={1}>
-                    <Text bold color="yellow">
-                      Custom Metadata:
-                    </Text>
-                  </Box>
-                  {selectedDocument.customMetadata.map((meta) => (
-                    <Box key={meta.key}>
-                      <Box width={14}>
-                        <Text dimColor>{meta.key}</Text>
-                      </Box>
-                      <Text>{meta.stringValue ?? meta.numericValue ?? "-"}</Text>
-                    </Box>
-                  ))}
-                </>
-              )}
-          </Box>
-
-          <Box marginTop={1}>
-            <Text dimColor>d: Delete  Esc/b: Back  q: Quit</Text>
-          </Box>
-        </>
+        <DocumentDetail document={selectedDocument} />
       )}
 
       {screen === "confirm-delete" && selectedDocument && (
-        <Box flexDirection="column">
-          <Box marginBottom={1}>
-            <Text color="red" bold>
-              Delete this document?
-            </Text>
-          </Box>
-          <Text>
-            {selectedDocument.displayName || selectedDocument.name.split("/").pop()}
-          </Text>
-          <Box marginTop={1}>
-            <Text dimColor>y: Delete  n/Esc: Cancel</Text>
-          </Box>
-        </Box>
+        <DocumentDeleteConfirm document={selectedDocument} />
       )}
 
       {screen === "deleting" && (
-        <Box flexDirection="column">
-          {isDeleting ? (
-            <Spinner message={deleteStatus} />
-          ) : (
-            <Text color={deleteStatus.startsWith("Error") ? "red" : "green"}>
-              {deleteStatus}
-            </Text>
-          )}
-        </Box>
+        <StatusScreen isProcessing={isDeleting} message={deleteStatus} />
       )}
 
       {screen === "file-browser" && (
@@ -782,15 +490,7 @@ export function App() {
       )}
 
       {screen === "uploading" && (
-        <Box flexDirection="column">
-          {isUploading ? (
-            <Spinner message={uploadStatus} />
-          ) : (
-            <Text color={uploadStatus.startsWith("Error") ? "red" : "green"}>
-              {uploadStatus}
-            </Text>
-          )}
-        </Box>
+        <StatusScreen isProcessing={isUploading} message={uploadStatus} />
       )}
     </Box>
   );
