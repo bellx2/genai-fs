@@ -1,6 +1,6 @@
 {
   "name": "genai-fs",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A terminal-based UI tool for managing Google Gemini FileStore.",
   "type": "module",
   "module": "src/index.tsx",
