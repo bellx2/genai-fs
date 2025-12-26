@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Box, Text, useInput, useApp } from "ink";
+import { ConfirmInput, PasswordInput, TextInput } from "@inkjs/ui";
 import {
   listStores,
   listDocuments,
@@ -14,10 +15,8 @@ import { FileBrowser } from "./components/FileBrowser.tsx";
 import { StatusScreen } from "./components/StatusScreen.tsx";
 import { StoreList } from "./components/StoreList.tsx";
 import { StoreDetail } from "./components/StoreDetail.tsx";
-import { StoreForm } from "./components/StoreForm.tsx";
 import { DocumentList } from "./components/DocumentList.tsx";
 import { DocumentDetail } from "./components/DocumentDetail.tsx";
-import { DocumentDeleteConfirm } from "./components/DocumentDeleteConfirm.tsx";
 import { maskApiKey } from "./utils/formatters.ts";
 
 // 画面の種類
@@ -41,7 +40,6 @@ export function App() {
 
   // APIキーの状態（環境変数から初期化）
   const [apiKey, setApiKey] = useState<string>(process.env.GEMINI_API_KEY || "");
-  const [apiKeyInput, setApiKeyInput] = useState("");
 
   // 初期画面を決定
   const [screen, setScreen] = useState<Screen>(
@@ -68,12 +66,10 @@ export function App() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   // ストア削除状態
-  const [storeDeleteInput, setStoreDeleteInput] = useState("");
   const [storeDeleteStatus, setStoreDeleteStatus] = useState<string>("");
   const [isStoreDeleting, setIsStoreDeleting] = useState(false);
 
   // ストア作成状態
-  const [storeCreateInput, setStoreCreateInput] = useState("");
   const [storeCreateStatus, setStoreCreateStatus] = useState<string>("");
   const [isStoreCreating, setIsStoreCreating] = useState(false);
 
@@ -112,11 +108,10 @@ export function App() {
   }, [fetchStores]);
 
   // APIキー設定後にストア一覧を取得
-  const handleApiKeySubmit = () => {
-    if (!apiKeyInput.trim()) return;
-    process.env.GEMINI_API_KEY = apiKeyInput.trim();
-    setApiKey(apiKeyInput.trim());
-    setApiKeyInput("");
+  const handleApiKeySubmit = (key: string) => {
+    if (!key.trim()) return;
+    process.env.GEMINI_API_KEY = key.trim();
+    setApiKey(key.trim());
     setScreen("store-select");
     setLoading(true);
   };
@@ -211,28 +206,26 @@ export function App() {
           setLoading(false);
         }
         setScreen("store-select");
-        setStoreDeleteInput("");
       }, 1000);
     } catch (e) {
       setIsStoreDeleting(false);
       setStoreDeleteStatus(`Error: ${e instanceof Error ? e.message : "Unknown error"}`);
       setTimeout(() => {
         setScreen("store-select");
-        setStoreDeleteInput("");
       }, 3000);
     }
   };
 
   // ストア作成ハンドラ
-  const handleCreateStore = async () => {
-    if (!storeCreateInput.trim()) return;
+  const handleCreateStore = async (name: string) => {
+    if (!name.trim()) return;
 
     setScreen("store-creating");
     setIsStoreCreating(true);
-    setStoreCreateStatus(`Creating: ${storeCreateInput}`);
+    setStoreCreateStatus(`Creating: ${name}`);
 
     try {
-      await createStore(storeCreateInput.trim());
+      await createStore(name.trim());
       setIsStoreCreating(false);
       setStoreCreateStatus("Create complete!");
 
@@ -247,30 +240,14 @@ export function App() {
           setLoading(false);
         }
         setScreen("store-select");
-        setStoreCreateInput("");
       }, 1000);
     } catch (e) {
       setIsStoreCreating(false);
       setStoreCreateStatus(`Error: ${e instanceof Error ? e.message : "Unknown error"}`);
       setTimeout(() => {
         setScreen("store-select");
-        setStoreCreateInput("");
       }, 3000);
     }
-  };
-
-  // テキスト入力処理
-  const handleTextInput = (
-    input: string,
-    key: { escape: boolean; backspace: boolean; delete: boolean; return: boolean; ctrl: boolean; meta: boolean },
-    setInput: (fn: (prev: string) => string) => void,
-    onSubmit: () => void,
-    onCancel: () => void
-  ) => {
-    if (key.escape) { onCancel(); return; }
-    if (key.backspace || key.delete) { setInput((prev) => prev.slice(0, -1)); return; }
-    if (key.return) { onSubmit(); return; }
-    if (input && !key.ctrl && !key.meta) setInput((prev) => prev + input);
   };
 
   useInput((input, key) => {
@@ -281,15 +258,8 @@ export function App() {
     }
 
     switch (screen) {
-      // APIキー入力画面
+      // APIキー入力画面（PasswordInputが入力を処理）
       case "api-key-input":
-        handleTextInput(
-          input,
-          key,
-          setApiKeyInput,
-          handleApiKeySubmit,
-          exit
-        );
         return;
 
       // 入力を無視する画面
@@ -300,34 +270,16 @@ export function App() {
       case "deleting":
         return;
 
-      // ストア作成画面
+      // ストア作成画面（TextInputが入力を処理）
       case "store-create":
-        handleTextInput(
-          input,
-          key,
-          setStoreCreateInput,
-          () => { if (storeCreateInput.trim()) handleCreateStore(); },
-          () => { setScreen("store-select"); setStoreCreateInput(""); }
-        );
         return;
 
-      // ストア削除確認画面
-      case "confirm-store-delete": {
-        const store = stores[selectedIndex];
-        handleTextInput(
-          input,
-          key,
-          setStoreDeleteInput,
-          () => { if (store && storeDeleteInput === store.displayName) handleDeleteStore(); },
-          () => { setScreen("store-select"); setStoreDeleteInput(""); }
-        );
+      // ストア削除確認画面（TextInputが入力を処理）
+      case "confirm-store-delete":
         return;
-      }
 
-      // ドキュメント削除確認画面
+      // ドキュメント削除確認画面（ConfirmInputが入力を処理）
       case "confirm-delete":
-        if (input === "y" || input === "Y") handleDeleteDocument();
-        if (input === "n" || input === "N" || key.escape) setScreen("document-detail");
         return;
 
       // ストア詳細画面
@@ -341,7 +293,6 @@ export function App() {
           setScreen("document-list");
           setSelectedDocument(null);
         }
-        if (input === "d") setScreen("confirm-delete");
         return;
 
       // ストア一覧画面
@@ -355,8 +306,8 @@ export function App() {
           setSelectedIndex(0);
         }
         if (input === "i" && stores.length > 0) setScreen("store-detail");
-        if (input === "n") { setScreen("store-create"); setStoreCreateInput(""); }
-        if (input === "d" && stores.length > 0) { setScreen("confirm-store-delete"); setStoreDeleteInput(""); }
+        if (input === "n") setScreen("store-create");
+        if (input === "d" && stores.length > 0) setScreen("confirm-store-delete");
         return;
 
       // ドキュメント一覧画面
@@ -367,6 +318,10 @@ export function App() {
         if ((key.return || input === "i") && documents[selectedIndex]) {
           setSelectedDocument(documents[selectedIndex]);
           setScreen("document-detail");
+        }
+        if (input === "d" && documents[selectedIndex]) {
+          setSelectedDocument(documents[selectedIndex]);
+          setScreen("confirm-delete");
         }
         if (input === "u") setScreen("file-browser");
         if (key.escape) {
@@ -414,11 +369,10 @@ export function App() {
           </Box>
           <Text>Enter your Gemini API key:</Text>
           <Box marginTop={1}>
-            <Text dimColor>{">"} </Text>
-            <Text color={apiKeyInput.trim() ? "green" : "white"}>
-              {apiKeyInput ? "*".repeat(apiKeyInput.length) : ""}
-            </Text>
-            <Text color="gray">|</Text>
+            <PasswordInput
+              placeholder="API Key..."
+              onSubmit={handleApiKeySubmit}
+            />
           </Box>
           <Box marginTop={1}>
             <Text dimColor>Enter: Submit  Esc: Quit</Text>
@@ -440,20 +394,55 @@ export function App() {
       )}
 
       {screen === "store-create" && (
-        <StoreForm mode="create" input={storeCreateInput} />
+        <Box flexDirection="column">
+          <Box marginBottom={1}>
+            <Text color="green" bold>Create new store</Text>
+          </Box>
+          <Text>Enter the store name:</Text>
+          <Box marginTop={1}>
+            <TextInput
+              placeholder="Store name..."
+              onSubmit={(value) => {
+                if (value.trim()) {
+                  handleCreateStore(value);
+                }
+              }}
+            />
+          </Box>
+          <Box marginTop={1}>
+            <Text dimColor>Enter: Create  Esc: Cancel</Text>
+          </Box>
+        </Box>
       )}
 
       {screen === "store-creating" && (
         <StatusScreen isProcessing={isStoreCreating} message={storeCreateStatus} />
       )}
 
-      {screen === "confirm-store-delete" && stores[selectedIndex] && (
-        <StoreForm
-          mode="delete"
-          input={storeDeleteInput}
-          storeName={stores[selectedIndex].displayName}
-        />
-      )}
+      {screen === "confirm-store-delete" && stores[selectedIndex] && (() => {
+        const store = stores[selectedIndex];
+        return (
+          <Box flexDirection="column">
+            <Box marginBottom={1}>
+              <Text color="red" bold>Delete this store?</Text>
+            </Box>
+            <Text>To delete "{store.displayName}", type the store name to confirm:</Text>
+            <Box marginTop={1}>
+              <TextInput
+                placeholder="Type store name..."
+                onSubmit={(value) => {
+                  if (value === store.displayName) {
+                    handleDeleteStore();
+                  }
+                }}
+              />
+            </Box>
+            <Box marginTop={1}>
+              <Text dimColor>Enter: Confirm  Esc: Cancel</Text>
+            </Box>
+          </Box>
+        );
+      })()}
 
       {screen === "store-deleting" && (
         <StatusScreen isProcessing={isStoreDeleting} message={storeDeleteStatus} />
@@ -473,7 +462,23 @@ export function App() {
       )}
 
       {screen === "confirm-delete" && selectedDocument && (
-        <DocumentDeleteConfirm document={selectedDocument} />
+        <Box flexDirection="column">
+          <Box marginBottom={1}>
+            <Text color="red" bold>Delete this document?</Text>
+          </Box>
+          <Text>{selectedDocument.displayName || selectedDocument.name.split("/").pop()}</Text>
+          <Box marginTop={1}>
+            <Text>Delete: </Text>
+            <ConfirmInput
+              defaultChoice="cancel"
+              onConfirm={handleDeleteDocument}
+              onCancel={() => {
+                setScreen("document-list");
+                setSelectedDocument(null);
+              }}
+            />
+          </Box>
+        </Box>
       )}
 
       {screen === "deleting" && (

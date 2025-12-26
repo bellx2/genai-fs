@@ -87,7 +87,7 @@ export function DocumentDetail({ document }: DocumentDetailProps) {
         </>
       )}
       <Box marginTop={1}>
-        <Text dimColor>d: Delete  Esc/b: Back  q: Quit</Text>
+        <Text dimColor>Esc/b: Back  q: Quit</Text>
       </Box>
     </Box>
   );

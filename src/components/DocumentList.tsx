@@ -91,7 +91,7 @@ export function DocumentList({
         );
       })}
       <Box marginTop={1}>
-        <Text dimColor>Up/Down: Select  Enter/i: Info  u: Upload  Esc: Back  q: Quit</Text>
+        <Text dimColor>Up/Down: Select  Enter/i: Info  d: Delete  u: Upload  Esc: Back  q: Quit</Text>
       </Box>
     </Box>
   );

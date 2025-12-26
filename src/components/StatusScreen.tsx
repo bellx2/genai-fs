@@ -1,5 +1,4 @@
-import { Box, Text } from "ink";
-import { Spinner } from "./Spinner.tsx";
+import { Spinner, StatusMessage } from "@inkjs/ui";
 
 interface StatusScreenProps {
   isProcessing: boolean;
@@ -10,13 +9,13 @@ interface StatusScreenProps {
 export function StatusScreen({ isProcessing, message }: StatusScreenProps) {
   const isError = message.startsWith("Error");
 
+  if (isProcessing) {
+    return <Spinner label={message} />;
+  }
+
   return (
-    <Box flexDirection="column">
-      {isProcessing ? (
-        <Spinner message={message} />
-      ) : (
-        <Text color={isError ? "red" : "green"}>{message}</Text>
-      )}
-    </Box>
+    <StatusMessage variant={isError ? "error" : "success"}>
+      {message}
+    </StatusMessage>
   );
 }
