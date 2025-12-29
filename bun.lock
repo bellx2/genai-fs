@@ -9,7 +9,6 @@
         "@inkjs/ui": "^2.0.0",
         "ink": "^6.6.0",
         "react": "^19.2.3",
-        "react-devtools-core": "^7.0.1",
       },
       "devDependencies": {
         "@types/bun": "latest",
