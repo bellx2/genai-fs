@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Box, Text, useInput, useApp } from "ink";
 import { ConfirmInput, PasswordInput, TextInput } from "@inkjs/ui";
+import pkg from "../package.json";
 import {
   listStores,
   listDocuments,
@@ -258,8 +259,11 @@ export function App() {
     }
 
     switch (screen) {
-      // APIキー入力画面（PasswordInputが入力を処理）
+      // APIキー入力画面
       case "api-key-input":
+        if (key.escape) {
+          exit();
+        }
         return;
 
       // 入力を無視する画面
@@ -270,12 +274,18 @@ export function App() {
       case "deleting":
         return;
 
-      // ストア作成画面（TextInputが入力を処理）
+      // ストア作成画面
       case "store-create":
+        if (key.escape) {
+          setScreen("store-select");
+        }
         return;
 
-      // ストア削除確認画面（TextInputが入力を処理）
+      // ストア削除確認画面
       case "confirm-store-delete":
+        if (key.escape) {
+          setScreen("store-select");
+        }
         return;
 
       // ドキュメント削除確認画面（ConfirmInputが入力を処理）
@@ -340,6 +350,7 @@ export function App() {
         <Text bold color="cyan">
           Gemini FileStore Manager
         </Text>
+        <Text dimColor> v{pkg.version}</Text>
       </Box>
 
       <Box marginBottom={1}>
