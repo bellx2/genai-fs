@@ -5,12 +5,16 @@
   "type": "module",
   "module": "src/index.tsx",
   "bin": {
-    "genai-fs": "src/index.tsx"
+    "genai-fs": "dist/index.js"
   },
   "scripts": {
     "dev": "bun run src/index.tsx",
-    "start": "bun run src/index.tsx"
+    "start": "bun run src/index.tsx",
+    "build": "bun build src/index.tsx --outdir dist --target node --format esm --external react-devtools-core"
   },
+  "files": [
+    "dist"
+  ],
   "keywords": [
     "genai",
     "gemini",
