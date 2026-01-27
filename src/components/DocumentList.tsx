@@ -64,34 +64,43 @@ export function DocumentList({
           </Text>
         </Box>
       </Box>
-      {documents.map((doc, index) => {
-        const state = formatState(doc.state);
-        const name = doc.displayName || doc.name.split("/").pop() || "";
-        return (
-          <Box key={doc.name} gap={1}>
-            <Box width={28}>
-              <Text color={index === selectedIndex ? "green" : "white"}>
-                {index === selectedIndex ? "❯ " : "  "}
-                {name.slice(0, 24)}
-              </Text>
+      {(() => {
+        const maxVisible = 20;
+        const startIndex = Math.max(0, selectedIndex - Math.floor(maxVisible / 2));
+        const visibleDocs = documents.slice(startIndex, startIndex + maxVisible);
+        return visibleDocs.map((doc, idx) => {
+          const actualIndex = startIndex + idx;
+          const state = formatState(doc.state);
+          const name = doc.displayName || doc.name.split("/").pop() || "";
+          return (
+            <Box key={doc.name} gap={1}>
+              <Box width={28}>
+                <Text color={actualIndex === selectedIndex ? "green" : "white"}>
+                  {actualIndex === selectedIndex ? "❯ " : "  "}
+                  {name.slice(0, 24)}
+                </Text>
+              </Box>
+              <Box width={10}>
+                <Text color={state.color}>{state.text}</Text>
+              </Box>
+              <Box width={12}>
+                <Text dimColor>{formatBytes(doc.sizeBytes)}</Text>
+              </Box>
+              <Box width={22}>
+                <Text dimColor>{formatDate(doc.createTime)}</Text>
+              </Box>
+              <Box width={22}>
+                <Text dimColor>{formatDate(doc.updateTime)}</Text>
+              </Box>
             </Box>
-            <Box width={10}>
-              <Text color={state.color}>{state.text}</Text>
-            </Box>
-            <Box width={12}>
-              <Text dimColor>{formatBytes(doc.sizeBytes)}</Text>
-            </Box>
-            <Box width={22}>
-              <Text dimColor>{formatDate(doc.createTime)}</Text>
-            </Box>
-            <Box width={22}>
-              <Text dimColor>{formatDate(doc.updateTime)}</Text>
-            </Box>
-          </Box>
-        );
-      })}
+          );
+        });
+      })()}
       <Box marginTop={1}>
-        <Text dimColor>Up/Down: Select  Enter/i: Info  d: Delete  u: Upload  Esc: Back  q: Quit</Text>
+        <Text dimColor>
+          {documents.length > 20 && `(${selectedIndex + 1}/${documents.length}) `}
+          Up/Down: Select  Enter/i: Info  d: Delete  u: Upload  Esc: Back  q: Quit
+        </Text>
       </Box>
     </Box>
   );

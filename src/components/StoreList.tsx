@@ -54,24 +54,33 @@ export function StoreList({
           </Text>
         </Box>
       </Box>
-      {stores.map((store, index) => (
-        <Box key={store.name} gap={1}>
-          <Box width={24}>
-            <Text color={index === selectedIndex ? "green" : "white"}>
-              {index === selectedIndex ? "❯ " : "  "}
-              {store.displayName.slice(0, 20)}
-            </Text>
-          </Box>
-          <Box width={22}>
-            <Text dimColor>{formatDate(store.createTime)}</Text>
-          </Box>
-          <Box width={22}>
-            <Text dimColor>{formatDate(store.updateTime)}</Text>
-          </Box>
-        </Box>
-      ))}
+      {(() => {
+        const maxVisible = 20;
+        const startIndex = Math.max(0, selectedIndex - Math.floor(maxVisible / 2));
+        const visibleStores = stores.slice(startIndex, startIndex + maxVisible);
+        return visibleStores.map((store, idx) => {
+          const actualIndex = startIndex + idx;
+          return (
+            <Box key={store.name} gap={1}>
+              <Box width={24}>
+                <Text color={actualIndex === selectedIndex ? "green" : "white"}>
+                  {actualIndex === selectedIndex ? "❯ " : "  "}
+                  {store.displayName.slice(0, 20)}
+                </Text>
+              </Box>
+              <Box width={22}>
+                <Text dimColor>{formatDate(store.createTime)}</Text>
+              </Box>
+              <Box width={22}>
+                <Text dimColor>{formatDate(store.updateTime)}</Text>
+              </Box>
+            </Box>
+          );
+        });
+      })()}
       <Box marginTop={1}>
         <Text dimColor>
+          {stores.length > 20 && `(${selectedIndex + 1}/${stores.length}) `}
           Up/Down: Select  Enter: Open  i: Info  n: New  d: Delete  q: Quit
         </Text>
       </Box>

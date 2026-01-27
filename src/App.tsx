@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Box, Text, useInput, useApp } from "ink";
 import { ConfirmInput, PasswordInput, TextInput } from "@inkjs/ui";
+import { dirname } from "path";
 import pkg from "../package.json";
 import {
   listStores,
@@ -74,6 +75,9 @@ export function App() {
   const [storeCreateStatus, setStoreCreateStatus] = useState<string>("");
   const [isStoreCreating, setIsStoreCreating] = useState(false);
 
+  // 最後にアップロードしたディレクトリパス
+  const [lastBrowsePath, setLastBrowsePath] = useState<string | undefined>();
+
   // ドキュメント一覧を再取得
   const refreshDocuments = useCallback(async () => {
     if (!selectedStore) return;
@@ -126,6 +130,7 @@ export function App() {
   const handleFileSelect = async (filePath: string) => {
     if (!selectedStore) return;
 
+    setLastBrowsePath(dirname(filePath));
     setScreen("uploading");
     setIsUploading(true);
     setUploadStatus(`Uploading: ${filePath.split("/").pop()}`);
@@ -497,7 +502,7 @@ export function App() {
       )}
 
       {screen === "file-browser" && (
-        <FileBrowser onSelect={handleFileSelect} onCancel={handleFileBrowserCancel} />
+        <FileBrowser onSelect={handleFileSelect} onCancel={handleFileBrowserCancel} initialPath={lastBrowsePath} />
       )}
 
       {screen === "uploading" && (

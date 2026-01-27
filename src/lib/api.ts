@@ -1,5 +1,9 @@
 // Gemini FileStore API クライアント
 import { GoogleGenAI } from "@google/genai";
+import * as fs from "fs/promises";
+import * as path from "path";
+import * as os from "os";
+import * as crypto from "crypto";
 
 const BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 
@@ -64,19 +68,28 @@ interface ListDocumentsResponse {
   nextPageToken?: string;
 }
 
-// ストア一覧を取得
-export async function listStores(pageSize = 20): Promise<FileSearchStore[]> {
+// ストア一覧を全件取得
+export async function listStores(): Promise<FileSearchStore[]> {
   const apiKey = getApiKey();
-  const url = `${BASE_URL}/fileSearchStores?key=${apiKey}&pageSize=${pageSize}`;
+  const all: FileSearchStore[] = [];
+  let pageToken: string | undefined;
 
-  const response = await fetch(url);
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Failed to fetch stores: ${error}`);
-  }
+  do {
+    const params = new URLSearchParams({ key: apiKey, pageSize: "20" });
+    if (pageToken) params.set("pageToken", pageToken);
 
-  const data = (await response.json()) as ListStoresResponse;
-  return data.fileSearchStores ?? [];
+    const response = await fetch(`${BASE_URL}/fileSearchStores?${params}`);
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to fetch stores: ${error}`);
+    }
+
+    const data = (await response.json()) as ListStoresResponse;
+    all.push(...(data.fileSearchStores ?? []));
+    pageToken = data.nextPageToken;
+  } while (pageToken);
+
+  return all;
 }
 
 // ストアを作成
@@ -113,22 +126,28 @@ export async function deleteStore(storeName: string): Promise<void> {
   }
 }
 
-// ドキュメント一覧を取得
-export async function listDocuments(
-  storeName: string,
-  pageSize = 20
-): Promise<Document[]> {
+// ドキュメント一覧を全件取得
+export async function listDocuments(storeName: string): Promise<Document[]> {
   const apiKey = getApiKey();
-  const url = `${BASE_URL}/${storeName}/documents?key=${apiKey}&pageSize=${pageSize}`;
+  const all: Document[] = [];
+  let pageToken: string | undefined;
 
-  const response = await fetch(url);
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Failed to fetch documents: ${error}`);
-  }
+  do {
+    const params = new URLSearchParams({ key: apiKey, pageSize: "20" });
+    if (pageToken) params.set("pageToken", pageToken);
 
-  const data = (await response.json()) as ListDocumentsResponse;
-  return data.documents ?? [];
+    const response = await fetch(`${BASE_URL}/${storeName}/documents?${params}`);
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to fetch documents: ${error}`);
+    }
+
+    const data = (await response.json()) as ListDocumentsResponse;
+    all.push(...(data.documents ?? []));
+    pageToken = data.nextPageToken;
+  } while (pageToken);
+
+  return all;
 }
 
 // ドキュメント詳細を取得
@@ -166,6 +185,15 @@ export async function deleteDocument(documentName: string): Promise<void> {
   }
 }
 
+// ユニークIDのシンボリックリンクを作成（非ASCIIや長いファイル名対策）
+async function createUploadSymlink(filePath: string): Promise<string> {
+  const ext = path.extname(filePath);
+  const uid = crypto.randomUUID();
+  const symlinkPath = path.join(os.tmpdir(), `${uid}${ext}`);
+  await fs.symlink(path.resolve(filePath), symlinkPath);
+  return symlinkPath;
+}
+
 // ファイルをアップロード（Google GenAI SDKを使用）
 export async function uploadFile(
   storeName: string,
@@ -173,19 +201,26 @@ export async function uploadFile(
 ): Promise<void> {
   const client = getClient();
 
-  // アップロード開始
-  let operation = await client.fileSearchStores.uploadToFileSearchStore({
-    fileSearchStoreName: storeName,
-    file: filePath,
-  });
+  // ユニークIDのシンボリックリンク経由でアップロードし、displayNameで元のファイル名を設定
+  const symlinkPath = await createUploadSymlink(filePath);
 
-  // 完了まで待機
-  while (!operation.done) {
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    operation = await client.operations.get({ operation });
-  }
+  try {
+    let operation = await client.fileSearchStores.uploadToFileSearchStore({
+      fileSearchStoreName: storeName,
+      file: symlinkPath,
+      config: { displayName: path.basename(filePath) },
+    });
 
-  if (operation.error) {
-    throw new Error(`Upload failed: ${operation.error.message}`);
+    // 完了まで待機
+    while (!operation.done) {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      operation = await client.operations.get({ operation });
+    }
+
+    if (operation.error) {
+      throw new Error(`Upload failed: ${operation.error.message}`);
+    }
+  } finally {
+    await fs.unlink(symlinkPath).catch(() => {});
   }
 }
