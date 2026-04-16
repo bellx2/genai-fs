@@ -217,7 +217,15 @@ async function uploadWithRetry(
       }
 
       if (operation.error) {
-        throw new Error(`Upload failed: ${operation.error.message}`);
+        const code = operation.error.code as number | undefined;
+        // gRPC: UNAVAILABLE=14, RESOURCE_EXHAUSTED=8, INTERNAL=13
+        const isRetryableGrpc = code === 14 || code === 8 || code === 13;
+        if (!isRetryableGrpc || attempt >= maxRetries) {
+          throw new Error(`Upload failed: ${operation.error.message}`);
+        }
+        const delay = Math.min(1000 * 2 ** attempt, 16000);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        continue;
       }
       return;
     } catch (error: any) {
