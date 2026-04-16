@@ -194,6 +194,45 @@ async function createUploadSymlink(filePath: string): Promise<string> {
   return symlinkPath;
 }
 
+// リトライ付きでアップロードを実行
+async function uploadWithRetry(
+  client: GoogleGenAI,
+  storeName: string,
+  symlinkPath: string,
+  displayName: string,
+  maxRetries = 3
+): Promise<void> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      let operation = await client.fileSearchStores.uploadToFileSearchStore({
+        fileSearchStoreName: storeName,
+        file: symlinkPath,
+        config: { displayName },
+      });
+
+      // 完了まで待機
+      while (!operation.done) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        operation = await client.operations.get({ operation });
+      }
+
+      if (operation.error) {
+        throw new Error(`Upload failed: ${operation.error.message}`);
+      }
+      return;
+    } catch (error: any) {
+      const status = error?.status ?? error?.statusCode;
+      const isRetryable = status === 503 || status === 429 || status === 500;
+      if (!isRetryable || attempt >= maxRetries) {
+        throw error;
+      }
+      // 指数バックオフで待機
+      const delay = Math.min(1000 * 2 ** attempt, 16000);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+}
+
 // ファイルをアップロード（Google GenAI SDKを使用）
 export async function uploadFile(
   storeName: string,
@@ -205,21 +244,7 @@ export async function uploadFile(
   const symlinkPath = await createUploadSymlink(filePath);
 
   try {
-    let operation = await client.fileSearchStores.uploadToFileSearchStore({
-      fileSearchStoreName: storeName,
-      file: symlinkPath,
-      config: { displayName: path.basename(filePath) },
-    });
-
-    // 完了まで待機
-    while (!operation.done) {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      operation = await client.operations.get({ operation });
-    }
-
-    if (operation.error) {
-      throw new Error(`Upload failed: ${operation.error.message}`);
-    }
+    await uploadWithRetry(client, storeName, symlinkPath, path.basename(filePath));
   } finally {
     await fs.unlink(symlinkPath).catch(() => {});
   }

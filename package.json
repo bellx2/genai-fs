@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "bun run src/index.tsx",
     "start": "bun run src/index.tsx",
-    "build": "bun build src/index.tsx --outdir dist --target node --format esm --alias:react-devtools-core=./src/stubs/react-devtools-core.js"
+    "build": "bun run build.ts"
   },
   "files": [
     "dist"
