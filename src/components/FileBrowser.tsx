@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
 import { readdir, stat } from "fs/promises";
 import { join, dirname } from "path";
-import { homedir } from "os";
 
 interface FileEntry {
   name: string;
@@ -26,7 +25,8 @@ function formatSize(bytes: number | undefined): string {
 }
 
 export function FileBrowser({ onSelect, onCancel, initialPath }: FileBrowserProps) {
-  const [currentPath, setCurrentPath] = useState(initialPath || homedir());
+  // 初期パス未指定時は実行時のカレントディレクトリから開始
+  const [currentPath, setCurrentPath] = useState(initialPath || process.cwd());
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [loading, setLoading] = useState(true);
