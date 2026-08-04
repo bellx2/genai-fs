@@ -17,7 +17,7 @@ GEMINI_API_KEY=your_api_key bunx genai-fs
 - **Store Management**: Create, view, and delete FileSearch stores
 - **Document Management**: Upload, view, and delete documents
 - **Interactive UI**: Navigate with keyboard shortcuts
-- **File Browser**: Built-in file browser for uploading files
+- **File Browser**: Built-in file browser for uploading files (starts from the current working directory)
 
 ## Requirements
 
@@ -89,6 +89,9 @@ genai-fs
 | q | Quit |
 
 ### File Browser
+
+Opens from the directory where you ran the command (`process.cwd()`). After selecting a file once, the next upload resumes from that directory.
+
 | Key | Action |
 |-----|--------|
 | Up/Down | Navigate files |
